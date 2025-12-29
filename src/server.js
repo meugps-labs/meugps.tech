@@ -13,7 +13,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(200);
     return res.end(JSON.stringify({
       status: "online",
-      message: "📍 Servidor MeuGPS.tech operando!",
+      // Altere esta linha no seu código local:
+      message: "📍 Servidor MeuGPS.tech operando com Deploy Automático! v1.1",
       owner: "Relton Lima",
       stack: "Node.js + Nginx + GCP",
       db: "Supabase Connected"
