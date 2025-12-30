@@ -30,11 +30,13 @@ Para testar o projeto no seu computador, siga os passos abaixo:
 git clone https://github.com/reltonlima/meugps.tech.git
 ```
 # Entre na pasta
+```bash
 cd meugps.tech
-
+```
 # Instale as dependências (se houver)
+```bash
 npm install
-
+```
 ### 3. Execução
 Você pode rodar o backend e o frontend separadamente para testes:
 
@@ -53,11 +55,19 @@ Este é um projeto aberto e toda ajuda é bem-vinda! Se você quer aprender sobr
 
 Faça um Fork do projeto.
 
-Crie uma Branch para sua feature (git checkout -b feature/minha-melhoria).
+Crie uma Branch para sua feature:
+```bash
+git checkout -b feature/minha-melhoria
+```
+Commit suas mudanças:
+```bash
+git commit -m 'feat: adiciona nova funcionalidade'
+```
 
-Commit suas mudanças (git commit -m 'feat: adiciona nova funcionalidade').
-
-Push para a Branch (git push origin feature/minha-melhoria).
+Push para a Branch:
+```bash
+git push origin feature/minha-melhoria
+```
 
 Abra um Pull Request.
 
