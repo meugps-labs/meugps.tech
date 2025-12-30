@@ -71,7 +71,7 @@ git push origin feature/minha-melhoria
 
 Abra um Pull Request.
 
-Idéias para contribuição:
+Ideias para contribuição:
 
 [ ] Implementação de integração com a API do Supabase.
 
