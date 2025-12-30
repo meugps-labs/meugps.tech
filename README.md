@@ -27,7 +27,7 @@ Para testar o projeto no seu computador, siga os passos abaixo:
 ### 2. Clonagem e Instalação
 ```bash
 # Clone o repositório
-git clone [https://github.com/reltonlima/meugps.tech.git](https://github.com/reltonlima/meugps.tech.git)
+git clone https://github.com/reltonlima/meugps.tech.git
 ```
 # Entre na pasta
 cd meugps.tech
