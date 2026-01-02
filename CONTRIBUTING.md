@@ -18,7 +18,7 @@ Antes de tocar no código, prepare sua máquina:
     ```
 3.  **Clonagem:**
     ```bash
-    git clone [https://github.com/reltonlima/meugps.tech.git](https://github.com/reltonlima/meugps.tech.git)
+    git clone [https://github.com/meugps-labs/meugps.tech.git](https://github.com/meugps-labs/meugps.tech.git)
     cd meugps.tech
     npm install
     ```
