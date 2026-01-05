@@ -17,10 +17,10 @@
             </div>
 
             <div class="flex items-center gap-4">
-                <span class="text-lg font-medium text-gray-700">Status do LED:</span>
+                <span class="text-lg font-medium text-gray-700">LED:</span>
                 <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="led-switch" onchange="toggleLED()" class="sr-only peer">
-                    <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                    <input type="checkbox" id="led-switch" class="sr-only peer" onchange="toggleLED()" disabled>
+                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
             </div>
 
@@ -31,12 +31,8 @@
     </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-
     <script>
-        // 2. Inicialização Global
-        // Substitua 'https://meugps.tech' pela sua URL se necessário
-        const socket = io('https://meugps.tech');
-        
+        const socket = io();
         const statusBadge = document.getElementById('status-badge');
         const logElement = document.getElementById('log');
 
@@ -46,54 +42,29 @@
             logElement.scrollTop = logElement.scrollHeight;
         }
 
-        // Adicionar uma variável de controle de estado
-        let isSocketReady = false;
-        
-        // 3. Listeners de Conexão
         socket.on('connect', () => {
-            isSocketReady = true;
             statusBadge.innerText = 'Conectado';
             statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700';
             addLog('Conectado ao servidor.');
-            
-            // Habilitar o switch quando conectado
             document.getElementById('led-switch').disabled = false;
         });
 
         socket.on('disconnect', () => {
-            isSocketReady = false;
             statusBadge.innerText = 'Desconectado';
             statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700';
             addLog('Conexão perdida.');
-            
-            // Desabilitar o switch quando desconectado
             document.getElementById('led-switch').disabled = true;
         });
-        
-        // Inicializar com switch desabilitado
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('led-switch').disabled = true;
-        });
-        
-        // 4. Função de Interação (Melhorada)
+
         function toggleLED() {
             const isChecked = document.getElementById('led-switch').checked;
             const command = isChecked ? 'ON' : 'OFF';
-            
-            // Verificação melhorada do estado da conexão
-            if (isSocketReady && socket.connected) {
-                socket.emit('led_control', { status: command });
-                addLog(`Comando enviado: ${command}`);
-            } else {
-                addLog('Erro: Socket não conectado. Aguarde a conexão.');
-                // Reverter o estado do switch se não conectado
-                document.getElementById('led-switch').checked = !isChecked;
-            }
+            socket.emit('led_control', { status: command });
+            addLog(`Comando enviado: ${command}`);
         }
-        
-        // Exemplo: Ouvindo retorno do servidor
+
         socket.on('update_status', (data) => {
-            addLog(`Servidor diz: ${data.msg}`);
+            addLog(data.msg);
         });
     </script>
 </body>
