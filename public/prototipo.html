@@ -3,51 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MeuGPS Labs - Node Bridge</title>
+    <title>Protótipo GPS & LED</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js"></script> 
-    <style>
-        body { background-color: #050505; }
-        .neon-border { border: 1px solid #1e3a8a; box-shadow: 0 0 15px #1e3a8a; }
-    </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen font-sans text-gray-100">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div class="p-8 rounded-2xl bg-gray-900 neon-border w-80 text-center">
-        <header class="mb-8">
-            <h1 class="text-xs uppercase tracking-[0.3em] text-blue-500 font-bold">MeuGPS Labs</h1>
-            <h2 class="text-2xl font-black mt-2">CONTROLE <span class="text-white">NODE.JS</span></h2>
-        </header>
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Controle do Dispositivo</h1>
+        
+        <div class="flex flex-col items-center gap-6">
+            <div id="status-badge" class="px-4 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
+                Conectando...
+            </div>
 
-        <label class="relative inline-flex items-center cursor-pointer mb-6">
-            <input type="checkbox" id="ledSwitch" class="sr-only peer" onchange="toggleLED(this)">
-            <div class="w-20 h-10 bg-gray-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-8 after:w-9 after:transition-all"></div>
-        </label>
+            <div class="flex items-center gap-4">
+                <span class="text-lg font-medium text-gray-700">Status do LED:</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="led-switch" onchange="toggleLED()" class="sr-only peer">
+                    <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
 
-        <div id="statusBox" class="bg-black/50 p-3 rounded-lg border border-gray-800">
-            <p id="statusLabel" class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Conectando...</p>
+            <div id="log" class="text-xs text-gray-500 bg-gray-50 p-3 rounded w-full h-24 overflow-y-auto text-left">
+                Aguardando eventos...
+            </div>
         </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <script>
-        const socket = io(); // Conecta automaticamente no mesmo servidor que serviu a página
+        // 2. Inicialização Global
+        // Substitua 'https://meugps.tech' pela sua URL se necessário
+        const socket = io('https://meugps.tech:3001');
+        
+        const statusBadge = document.getElementById('status-badge');
+        const logElement = document.getElementById('log');
 
-        const statusLabel = document.getElementById('statusLabel');
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${time}] ${msg}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
 
+        // 3. Listeners de Conexão
         socket.on('connect', () => {
-            statusLabel.innerText = "Online - Backend Node.js";
-            statusLabel.className = "text-[10px] text-green-500 uppercase font-bold tracking-widest";
+            statusBadge.innerText = 'Conectado';
+            statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700';
+            addLog('Conectado ao servidor.');
         });
 
         socket.on('disconnect', () => {
-            statusLabel.innerText = "Desconectado";
-            statusLabel.className = "text-[10px] text-red-500 uppercase font-bold tracking-widest";
+            statusBadge.innerText = 'Desconectado';
+            statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700';
+            addLog('Conexão perdida.');
         });
 
-        function toggleLED(checkbox) {
-            // Emite evento simples para o Node.js
-            socket.emit('toggle-led', checkbox.checked);
+        // 4. Função de Interação (Chamada pelo onchange do HTML)
+        function toggleLED() {
+            const isChecked = document.getElementById('led-switch').checked;
+            const command = isChecked ? 'ON' : 'OFF';
+            
+            // Verifica se o socket está pronto para evitar o erro de inicialização
+            if (socket && socket.connected) {
+                socket.emit('led_control', { status: command });
+                addLog(`Comando enviado: ${command}`);
+            } else {
+                addLog('Erro: Socket não conectado.');
+            }
         }
+
+        // Exemplo: Ouvindo retorno do servidor
+        socket.on('update_status', (data) => {
+            addLog(`Servidor diz: ${data.msg}`);
+        });
     </script>
 </body>
 </html>
