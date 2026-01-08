@@ -108,7 +108,7 @@
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const socket = io({ transports: ['websocket'] });
+        const socket = io();
         const statusBadge = document.getElementById('status-badge');
         const statusIndicator = document.getElementById('status-indicator');
         const logElement = document.getElementById('log');
