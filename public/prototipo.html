@@ -3,69 +3,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protótipo GPS & LED</title>
+    <title>MeuGPS.tech - Controle IoT</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzYjgyZjYiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==">
+    <style>
+        .glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        .led-on {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">Controle do Dispositivo</h1>
+    <!-- Header -->
+    <div class="text-center mb-6">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">MeuGPS.tech</h1>
+        <p class="text-gray-600">Controle IoT & Monitoramento</p>
+    </div>
+
+    <div class="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/20 w-full max-w-lg">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-semibold mb-2 text-gray-800">Dispositivo ESP32</h2>
+            <div class="flex justify-center items-center gap-2 mb-4">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
+                <div id="status-badge" class="px-4 py-2 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700 border border-yellow-300">
+                    🔄 Conectando...
+                </div>
+            </div>
+        </div>
         
-        <div class="flex flex-col items-center gap-6">
-            <div id="status-badge" class="px-4 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
-                Conectando...
+        <div class="space-y-6">
+            <!-- LED Control Section -->
+            <div class="bg-gray-50 p-6 rounded-xl border">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div id="led-visual" class="w-6 h-6 rounded-full bg-gray-300 transition-all duration-300"></div>
+                        <span class="text-lg font-medium text-gray-700">LED Controle</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="led-switch" class="sr-only peer" onchange="toggleLED()" disabled>
+                        <div class="relative w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <span id="led-status">Status: Desconhecido</span>
+                </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                <span class="text-lg font-medium text-gray-700">LED:</span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="led-switch" class="sr-only peer" onchange="toggleLED()" disabled>
-                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+            <!-- MQTT Info Section -->
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-blue-600">📡</span>
+                    <span class="font-semibold text-blue-800">Broker MQTT</span>
+                </div>
+                <div class="text-sm text-blue-700">
+                    <div id="mqtt-broker">Aguardando...</div>
+                    <div class="flex items-center gap-1 mt-1">
+                        <div id="mqtt-status" class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                        <span id="mqtt-text">Verificando conexão...</span>
+                    </div>
+                </div>
             </div>
 
-            <div id="log" class="text-xs text-gray-500 bg-gray-50 p-3 rounded w-full h-24 overflow-y-auto text-left">
-                Aguardando eventos...
+            <!-- Stats Section -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-green-50 p-4 rounded-xl text-center border border-green-200">
+                    <div class="text-2xl font-bold text-green-600" id="messages-count">0</div>
+                    <div class="text-sm text-green-700">Mensagens</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-xl text-center border border-purple-200">
+                    <div class="text-2xl font-bold text-purple-600" id="uptime">00:00</div>
+                    <div class="text-sm text-purple-700">Uptime</div>
+                </div>
             </div>
+
+            <!-- Log Section -->
+            <div class="bg-gray-900 p-4 rounded-xl">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-green-400">💻</span>
+                    <span class="font-semibold text-green-400">Terminal</span>
+                </div>
+                <div id="log" class="text-xs text-green-300 font-mono bg-gray-800 p-3 rounded h-32 overflow-y-auto">
+                    <div class="text-green-400">[SISTEMA] Inicializando MeuGPS.tech v1.0...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-6 text-center text-gray-600 text-sm">
+        <p>Desenvolvido por <strong>MeuGPS Labs</strong> • Open Source</p>
+        <div class="flex justify-center gap-4 mt-2">
+            <a href="/" class="hover:text-blue-600">🏠 Home</a>
+            <a href="/quemsomos" class="hover:text-blue-600">👥 Quem Somos</a>
+            <a href="https://github.com/meugps-labs/meugps.tech" target="_blank" class="hover:text-blue-600">💻 GitHub</a>
         </div>
     </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const socket = io({ transports: ['websocket'] });
         const statusBadge = document.getElementById('status-badge');
+        const statusIndicator = document.getElementById('status-indicator');
         const logElement = document.getElementById('log');
+        const ledVisual = document.getElementById('led-visual');
+        const ledStatus = document.getElementById('led-status');
+        const mqttStatus = document.getElementById('mqtt-status');
+        const mqttText = document.getElementById('mqtt-text');
+        const messagesCount = document.getElementById('messages-count');
+        const ledSwitch = document.getElementById('led-switch');
+        const uptimeElement = document.getElementById('uptime');
 
-        function addLog(msg) {
+        let messageCounter = 0;
+        let startTime = Date.now();
+
+        // Update uptime every second
+        setInterval(() => {
+            const uptime = Date.now() - startTime;
+            const minutes = Math.floor(uptime / 60000);
+            const seconds = Math.floor((uptime % 60000) / 1000);
+            uptimeElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        function addLog(msg, type = 'info') {
             const time = new Date().toLocaleTimeString();
-            logElement.innerHTML += `<div>[${time}] ${msg}</div>`;
+            const colorClass = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-green-300';
+            const prefix = type === 'error' ? '[ERRO]' : type === 'success' ? '[OK]' : '[INFO]';
+            
+            logElement.innerHTML += `<div class="${colorClass}">[${time}] ${prefix} ${msg}</div>`;
             logElement.scrollTop = logElement.scrollHeight;
+            
+            messageCounter++;
+            messagesCount.textContent = messageCounter;
+        }
+
+        function updateLedState(isOn) {
+            if (isOn) {
+                ledVisual.className = 'w-6 h-6 rounded-full bg-blue-500 led-on transition-all duration-300 glow';
+                ledStatus.textContent = 'Status: Ligado';
+                if (!ledSwitch.checked) {
+                    ledSwitch.checked = true;
+                }
+            } else {
+                ledVisual.className = 'w-6 h-6 rounded-full bg-gray-300 transition-all duration-300';
+                ledStatus.textContent = 'Status: Desligado';
+                if (ledSwitch.checked) {
+                    ledSwitch.checked = false;
+                }
+            }
+        }
+
+        function updateConnectionStatus(connected, mqttConnected = false) {
+            if (connected) {
+                statusBadge.innerHTML = '🟢 Conectado';
+                statusBadge.className = 'px-4 py-2 rounded-full text-sm font-semibold bg-green-100 text-green-700 border border-green-300';
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
+                document.getElementById('led-switch').disabled = false;
+                
+                if (mqttConnected) {
+                    mqttStatus.className = 'w-2 h-2 rounded-full bg-green-500';
+                    mqttText.textContent = 'MQTT Conectado';
+                }
+            } else {
+                statusBadge.innerHTML = '🔴 Desconectado';
+                statusBadge.className = 'px-4 py-2 rounded-full text-sm font-semibold bg-red-100 text-red-700 border border-red-300';
+                statusIndicator.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse';
+                document.getElementById('led-switch').disabled = true;
+                updateLedState(false); // Garante que o led apareça como desligado
+                ledStatus.textContent = 'Status: Desconectado';
+                
+                mqttStatus.className = 'w-2 h-2 rounded-full bg-red-500';
+                mqttText.textContent = 'MQTT Desconectado';
+            }
         }
 
         socket.on('connect', () => {
-            statusBadge.innerText = 'Conectado';
-            statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700';
-            addLog('Conectado ao servidor.');
-            document.getElementById('led-switch').disabled = false;
+            updateConnectionStatus(true);
+            addLog('Conectado ao servidor WebSocket', 'success');
+            addLog('Aguardando status do MQTT...', 'info');
         });
 
         socket.on('disconnect', () => {
-            statusBadge.innerText = 'Desconectado';
-            statusBadge.className = 'px-4 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700';
-            addLog('Conexão perdida.');
-            document.getElementById('led-switch').disabled = true;
+            updateConnectionStatus(false);
+            addLog('Conexão WebSocket perdida', 'error');
         });
 
         function toggleLED() {
-            const isChecked = document.getElementById('led-switch').checked;
+            const isChecked = ledSwitch.checked;
             const command = isChecked ? 'ON' : 'OFF';
+            
             socket.emit('led_control', { status: command });
-            addLog(`Comando enviado: ${command}`);
+            addLog(`Comando enviado: LED ${command}`, 'info');
+            
+            // A atualização visual agora é feita pelo retorno do hardware,
+            // mas podemos manter uma atualização otimista para feedback imediato.
+            updateLedState(isChecked);
         }
 
         socket.on('update_status', (data) => {
-            addLog(data.msg);
+            addLog(data.msg, data.msg.includes('Erro') ? 'error' : 'success');
+            
+            // Sincroniza o estado do LED com base no status do hardware
+            if (data.msg.includes('Hardware:')) {
+                if (data.msg.includes('LED ON')) {
+                    updateLedState(true);
+                } else if (data.msg.includes('LED OFF')) {
+                    updateLedState(false);
+                } else if (data.msg.includes('online')) {
+                    // Device just came online; firmware initializes LED as OFF,
+                    // so reflect that in the UI until a LED ON message arrives.
+                    updateLedState(false);
+                    addLog('Dispositivo online — sincronizando estado (OFF)', 'info');
+                }
+
+                // Mensagem auxiliar com nível lógico do pino, ex: "pin=1"
+                if (data.msg.includes('pin=')) {
+                    const m = data.msg.match(/pin=(\d+)/);
+                    if (m) {
+                        addLog(`Nível lógico do pino: ${m[1]}`, 'info');
+                    }
+                }
+            }
         });
+
+        socket.on('mqtt_status', (status) => {
+            const brokerElement = document.getElementById('mqtt-broker');
+            brokerElement.textContent = status.broker || 'Não informado';
+
+            if (status.connected) {
+                updateConnectionStatus(true, true);
+                mqttStatus.className = 'w-2 h-2 rounded-full bg-green-500';
+                mqttText.textContent = 'Conectado';
+                addLog(`Conectado ao broker MQTT: ${status.broker}`, 'success');
+            } else {
+                updateConnectionStatus(true, false); // Mantém WS conectado, mas MQTT não
+                mqttStatus.className = 'w-2 h-2 rounded-full bg-red-500';
+                if (status.state === 'reconnecting') {
+                    mqttText.textContent = 'Reconectando...';
+                    addLog('Perda de conexão MQTT. Tentando reconectar...', 'error');
+                } else {
+                    mqttText.textContent = 'Desconectado';
+                    addLog('Desconectado do broker MQTT.', 'error');
+                }
+            }
+        });
+
+        // Initialize page
+        addLog('Interface carregada', 'success');
+        addLog('Conectando ao servidor...', 'info');
     </script>
 </body>
 </html>

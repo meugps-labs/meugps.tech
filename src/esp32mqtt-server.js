@@ -17,10 +17,31 @@ const io = new Server(server, {
     transports: ['polling', 'websocket']
 });
 
-// MQTT - usar IP externo em produção
-const mqttBroker = 'mqtt://35.202.46.113:1883';
+// MQTT - Configuração para broker remoto
+// Usando broker público do Mosquitto como padrão
+// Pode ser sobrescrito via variável de ambiente MQTT_BROKER_URL
+const mqttBroker = process.env.MQTT_BROKER_URL || 'mqtt://broker.hivemq.com';
 
-const mqttClient = mqtt.connect(mqttBroker);
+// Formata o texto do broker para exibição no frontend (remove protocolo, mantém host:port)
+function formatBrokerDisplay(broker) {
+    try {
+        const url = new URL(broker);
+        return url.hostname + (url.port ? `:${url.port}` : '');
+    } catch (e) {
+        return broker.replace(/^.*:\/\//, '');
+    }
+}
+// Configurações de conexão MQTT otimizadas para broker remoto
+const mqttOptions = {
+    clientId: `meugps_server_${Math.random().toString(16).substr(2, 8)}`,
+    connectTimeout: 10000, // 10 segundos timeout
+    reconnectPeriod: 1000, // Reconectar a cada 1 segundo se perder conexão (mais responsivo)
+    keepalive: 60,
+    clean: true,
+    rejectUnauthorized: false // Para brokers sem SSL válido
+};
+
+const mqttClient = mqtt.connect(mqttBroker, mqttOptions);
 
 // Middleware para logs
 app.use((req, res, next) => {
@@ -50,14 +71,46 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Enviar status MQTT atual para o cliente recém-conetado
+function sendMqttStatus(socket) {
+    const status = {
+        connected: mqttClient.connected,
+        broker: formatBrokerDisplay(mqttBroker)
+    };
+    socket.emit('mqtt_status', status);
+}
+
 // MQTT eventos
 mqttClient.on('connect', () => {
-    console.log('✅ MQTT conectado em:', mqttBroker);
-    mqttClient.subscribe('meugps/v1/hardware/status');
+    console.log('✅ MQTT conectado ao broker remoto:', mqttBroker);
+    console.log('🔗 Client ID:', mqttOptions.clientId);
+    mqttClient.subscribe('meugps/v1/hardware/status', (err) => {
+        if (err) {
+            console.error('❌ Erro ao subscrever tópico:', err);
+        } else {
+            console.log('📡 Subscrito ao tópico: meugps/v1/hardware/status');
+        }
+    });
+    io.emit('mqtt_status', { connected: true, broker: formatBrokerDisplay(mqttBroker) });
 });
 
 mqttClient.on('error', (err) => {
-    console.error('❌ Erro MQTT:', err);
+    console.error('❌ Erro MQTT:', err.message);
+});
+
+mqttClient.on('reconnect', () => {
+    console.log('🔄 Tentando reconectar ao broker MQTT...');
+    io.emit('mqtt_status', { connected: false, state: 'reconnecting', broker: formatBrokerDisplay(mqttBroker) });
+});
+
+mqttClient.on('disconnect', () => {
+    console.log('⚠️  Desconectado do broker MQTT');
+    io.emit('mqtt_status', { connected: false, state: 'disconnected', broker: formatBrokerDisplay(mqttBroker) });
+});
+
+mqttClient.on('offline', () => {
+    console.log('📴 Cliente MQTT offline');
+    io.emit('mqtt_status', { connected: false, state: 'offline', broker: formatBrokerDisplay(mqttBroker) });
 });
 
 mqttClient.on('message', (topic, message) => {
@@ -68,6 +121,9 @@ mqttClient.on('message', (topic, message) => {
 // Socket.io eventos
 io.on('connection', (socket) => {
     console.log('👤 Cliente conectado:', socket.id);
+
+    // Envia o status inicial do MQTT para o cliente que acabou de conectar
+    sendMqttStatus(socket);
 
     socket.on('led_control', (data) => {
         const payload = data.status === 'ON' ? "1" : "0";
@@ -85,9 +141,9 @@ io.on('connection', (socket) => {
         console.log('👤 Cliente desconectado:', socket.id);
     });
 
-    // Enviar status inicial
+    // Enviar status inicial do WebSocket
     socket.emit('update_status', { 
-        msg: `Conectado! MQTT: ${mqttClient.connected ? 'OK' : 'Erro'}` 
+        msg: `Conectado ao servidor! Aguardando status do MQTT...` 
     });
 });
 
@@ -100,8 +156,10 @@ io.on('error', (err) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando em: http://0.0.0.0:${PORT}`);
-    console.log(`🔗 MQTT: ${mqttBroker}`);
+    console.log(`🔗 MQTT Broker Remoto: ${mqttBroker}`);
+    console.log(`🆔 Client ID: ${mqttOptions.clientId}`);
     console.log(`📁 Arquivos estáticos: ${path.join(__dirname, '../public')}`);
+    console.log(`⚙️  Ambiente: ${process.env.NODE_ENV || 'development'}`);
 });
 
 // Graceful shutdown
